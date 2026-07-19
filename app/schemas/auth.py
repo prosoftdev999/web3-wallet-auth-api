@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 
 
 class NonceRequest(BaseModel):
-    wallet_address: str
+    wallet_address: str = Field(min_length=42, max_length=42)
 
 
 class NonceResponse(BaseModel):
