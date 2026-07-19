@@ -51,9 +51,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Build Docker API without cache
+        run: |
+          docker compose build --no-cache api
+
       - name: Start Docker services
         run: |
-          docker compose up --build -d
+          docker compose up -d
 
       - name: Show container status
         run: |
@@ -72,8 +76,46 @@ jobs:
           done
 
           echo "API did not become ready"
+          docker compose ps
           docker compose logs
           exit 1
+
+      - name: Verify API routes
+        run: |
+          curl --fail --silent \
+            http://localhost:8001/openapi.json \
+            > openapi.json
+
+          python - <<'PY'
+          import json
+
+          with open("openapi.json", encoding="utf-8") as file:
+              schema = json.load(file)
+
+          available_paths = set(schema.get("paths", {}))
+
+          required_paths = {
+              "/health",
+              "/auth/nonce",
+              "/auth/login",
+              "/auth/logout",
+              "/me",
+          }
+
+          print("Available API paths:")
+
+          for path in sorted(available_paths):
+              print(path)
+
+          missing_paths = required_paths - available_paths
+
+          if missing_paths:
+              raise SystemExit(
+                  f"Missing API paths: {sorted(missing_paths)}"
+              )
+
+          print("All required API paths are available.")
+          PY
 
       - name: Run database migrations
         run: |
