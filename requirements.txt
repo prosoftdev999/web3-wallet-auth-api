@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+asyncpg
+alembic
+pydantic-settings
+python-jose[cryptography]
+web3
+eth-account
+siwe
+redis
+email-validator
+httpx
+pytest
+pytest-asyncio
+aiosqlite
