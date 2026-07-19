@@ -14,10 +14,7 @@ class SiweVerificationError(Exception):
 
 
 def normalize_wallet_address(address: str) -> str:
-    """
-    Validate an Ethereum wallet address and convert it
-    to checksum format.
-    """
+    
     if not Web3.is_address(address):
         raise ValueError("Invalid Ethereum wallet address")
 
@@ -25,10 +22,8 @@ def normalize_wallet_address(address: str) -> str:
 
 
 def generate_nonce() -> str:
-    """
-    Generate a cryptographically secure nonce.
-    """
-    return secrets.token_urlsafe(16)
+    
+    return secrets.token_hex(16)
 
 
 def build_siwe_message(wallet_address: str, nonce: str) -> str:
