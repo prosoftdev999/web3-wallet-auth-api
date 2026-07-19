@@ -1,0 +1,95 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Create test environment file
+        run: |
+          cat > .env <<'EOF'
+          APP_NAME=Web3 Wallet Authentication API
+          DEBUG=false
+
+          DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/web3_wallet_db
+
+          JWT_SECRET_KEY=github-actions-test-secret-1234567890
+          JWT_ALGORITHM=HS256
+          ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+          SIWE_DOMAIN=localhost:3000
+          SIWE_URI=http://localhost:3000
+          SIWE_CHAIN_ID=1
+          SIWE_STATEMENT=Sign in to Web3 Wallet Authentication API
+
+          NONCE_EXPIRE_MINUTES=10
+
+          REDIS_URL=redis://redis:6379/0
+
+          CORS_ORIGINS=["http://localhost:3000","http://127.0.0.1:3000"]
+          EOF
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Start Docker services
+        run: |
+          docker compose up --build -d
+
+      - name: Show container status
+        run: |
+          docker compose ps
+
+      - name: Wait for API
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent http://localhost:8001/health; then
+              echo "API is ready"
+              exit 0
+            fi
+
+            echo "Waiting for API: attempt ${attempt}/30"
+            sleep 2
+          done
+
+          echo "API did not become ready"
+          docker compose logs
+          exit 1
+
+      - name: Run database migrations
+        run: |
+          docker compose exec -T api alembic upgrade head
+
+      - name: Run tests
+        run: |
+          pytest -v
+
+      - name: Show Docker logs after failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs
+
+      - name: Stop Docker services
+        if: always()
+        run: |
+          docker compose down -v
